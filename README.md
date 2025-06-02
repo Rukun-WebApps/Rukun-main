@@ -6,7 +6,7 @@ Panduan untuk menjalankan project ini di lokal:
 
 1. **Clone repository**
    ```bash
-   git clone https://github.com/username/rukun.git
+   git clone https://github.com/Rukun-WebApps/Rukun-main.git
    cd Rukun-main
    ```
 
