@@ -1,33 +1,71 @@
 // middleware/auth.global.ts
 
 export default defineNuxtRouteMiddleware((to, from) => {
-  const isAuthenticated = useCookie('isLoggedIn').value; // Cek status login
-  const userRole = useCookie('user_role').value ?? 'User'; // Default ke 'User' jika null/undefined
+  const isAuthenticated = useCookie('isLoggedIn').value;
+  const userRoleCookie = useCookie('user_role').value;
+  
+  // Check if user is admin (case-insensitive)
+  const isAdmin = userRoleCookie && 
+    String(userRoleCookie).toLowerCase().trim() === 'admin';
 
-  // Daftar halaman publik yang tidak memerlukan otentikasi
-  const publicPages = ['/auth/login', '/auth/register', '/auth/forget-password', '/auth/reset-password', '/auth/verification'];
+  // Halaman publik yang tidak memerlukan otentikasi
+  const publicPages = [
+    '/auth/login', 
+    '/auth/register', 
+    '/auth/forget-password', 
+    '/auth/reset-password', 
+    '/auth/verification'
+  ];
 
-  // Cek apakah halaman yang diminta adalah halaman publik
+  // Halaman yang diizinkan untuk User biasa
+  const userAllowedPages = [
+    '/dashboard',  
+    '/profile', 
+    '/applicationletter',
+    '/applicationletter/create',
+    '/applicationletter/history',
+    '/notifications'
+  ];
+
   const isPublicPage = publicPages.includes(to.path);
 
-  // Jika halaman bukan publik dan pengguna belum login, redirect ke halaman login
+  // Cek 1: Jika belum login dan bukan halaman publik -> redirect ke login
   if (!isPublicPage && !isAuthenticated) {
     return navigateTo('/auth/login', { redirectCode: 302 });
   }
 
-  // Jika pengguna sudah login, cegah akses ke halaman login/registrasi
-  const isAuthPage = ['/auth/login', '/auth/register', '/auth/forget-password', '/auth/reset-password', '/auth/verification'].includes(to.path);
-  if (isAuthPage && isAuthenticated) {
-    return navigateTo('/');
+  // Cek 2: Jika sudah login tapi akses halaman auth -> redirect berdasarkan role
+  if (publicPages.includes(to.path) && isAuthenticated) {
+    if (isAdmin) {
+      return navigateTo('/');  // Admin ke root
+    } else {
+      return navigateTo('/dashboard');  // User ke dashboard
+    }
   }
 
-  // Jika Admin biasa mencoba mengakses halaman user, arahkan ke user dashboard
-  if (userRole === 'Admin' && to.path.startsWith('/admin')) {
-    return navigateTo('/user/dashboard');
+  // Cek 3: Jika user biasa akses root path -> redirect ke dashboard
+  if (to.path === '/' && isAuthenticated && !isAdmin) {
+    return navigateTo('/dashboard');
   }
 
-  // Jika user biasa mencoba mengakses halaman admin, arahkan ke user dashboard
-  if (userRole === 'User' && to.path.startsWith('/admin')) {
-    return navigateTo('/user/dashboard');
+  // Cek 4: Jika admin -> biarkan akses ke mana saja
+  if (isAdmin) {
+    return; // Admin bisa akses semua halaman
+  }
+
+  // Cek 5: Jika user biasa -> cek apakah halaman diizinkan
+  if (isAuthenticated && !isPublicPage) {
+    const isAllowed = userAllowedPages.some(allowedPath => {
+      return to.path === allowedPath || 
+             to.path.startsWith(allowedPath + '/');
+    });
+
+    if (!isAllowed) {
+      // Return 404 untuk menyembunyikan keberadaan halaman admin 
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Page Not Found'
+      });
+    }
   }
 });

@@ -29,7 +29,7 @@
           </svg>
         </li>
         <li class="text-sm font-semibold text-gray-800 truncate" aria-current="page">
-          Pemeriksaan
+          Pengajuan Surat
         </li>
       </ol>
       <!-- End Breadcrumb -->

@@ -28,7 +28,7 @@
           </svg>
         </li>
         <li class="text-sm font-semibold text-gray-800 truncate" aria-current="page">
-          Cashflow
+          Arus Kas
         </li>
       </ol>
       <!-- End Breadcrumb -->

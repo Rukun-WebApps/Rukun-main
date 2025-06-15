@@ -37,6 +37,10 @@
 
           <!-- Submit Button -->
           <div class="space-x-3 self-end">
+            <button type="button" @click="handleCancel"
+                 class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-red-600 bg-transparent text-red-600 hover:bg-red-200 focus:outline-none focus:bg-red-700 disabled:opacity-50 disabled:pointer-events-none">
+                 Batal
+            </button>
             <button type="submit"
                     class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
                     :disabled="isLoading">
@@ -65,6 +69,11 @@ const clearForm = () => {
   title.value = null;
   description.value = null;
   event.value = null;
+};
+
+const handleCancel = () => {
+  clearForm();
+  router.push('/notifications');
 };
 
 // Form submission handler

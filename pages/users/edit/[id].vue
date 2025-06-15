@@ -28,7 +28,7 @@
             </svg>
           </li>
           <li class="text-sm font-semibold text-gray-800 truncate" aria-current="page">
-            Arus Kas
+            Pengguna
           </li>
         </ol>
         <!-- End Breadcrumb -->

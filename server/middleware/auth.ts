@@ -2,69 +2,117 @@ import UrlPattern from "url-pattern"
 import {decodeAccessToken} from "~/server/utils/jwt";
 import {User} from "~/server/model/User";
 
-export default defineEventHandler( async (event) => {
+export default defineEventHandler(async (event) => {
     try {
-        const endpoints = [
-            '/api/auth/user',
-            '/api/auth/logs',
-            '/api/auth/logout',
-            '/api/auth/users',
-            '/api/auth/users/:id',
-            '/api/auth/users/search?q=:q',
-            '/api/auth/users?page=:page&pagesize=:pagesize',
-            '/api/auth/logs?page=:page&pagesize=:pagesize',
-            '/api/auth/users',
-            '/api/auth/citizen',
-            '/api/auth/citizen/:id',
-            '/api/auth/citizen/search?q=:q',
-            '/api/auth/citizen?page=:page&pagesize=:pagesize',
-            '/api/auth/kk',
-            '/api/auth/kk/:id',
-            '/api/auth/kk/search?q=:q',
-            '/api/auth/kk?page=:page&pagesize=:pagesize',
-            '/api/auth/cashflow',
-            '/api/auth/cashflow/:id',
-            '/api/auth/cashflow/search?q=:q',
-            '/api/auth/cashflow?page=:page&pagesize=:pagesize',
-            '/api/auth/notifications',
-            '/api/auth/notifications/:id',
-            '/api/auth/notifications/search?q=:q',
-            '/api/auth/notifications?page=:page&pagesize=:pagesize',
-            '/api/auth/application-letter',
-            '/api/auth/application-letter/:id',
-            '/api/auth/application-letter/search?q=:q',
-            '/api/auth/application-letter?page=:page&pagesize=:pagesize',
-        ]
+        // Definisi endpoints dengan role yang diizinkan
+        const endpointRoles = {
+            // Endpoints untuk semua user yang login (User + Admin)
+            '/api/auth/user': ['User', 'Admin'],
+            '/api/auth/logout': ['User', 'Admin'],
+            
+            
+            // Endpoints untuk User (bisa buat & lihat pengajuan surat sendiri)
+            '/api/auth/application-letter': ['User', 'Admin'],
+            '/api/auth/application-letter/:id': ['User', 'Admin'],
+            '/api/auth/application-letter/search?q=:q': ['User', 'Admin'],
+            '/api/auth/application-letter?page=:page&pagesize=:pagesize': ['User', 'Admin'],
+            
+            // Endpoints khusus Admin saja
+            '/api/auth/users': ['Admin'],
+            '/api/auth/users/:id': ['Admin'],
+            '/api/auth/user/stats': ['User', 'Admin'],
+            '/api/auth/users/search': ['Admin'],
+            '/api/auth/users?page=:page&pagesize=:pagesize': ['Admin'],
 
-        const isHandledByThisMiddleware = endpoints.some(endopoint => {
-            const pattern = new UrlPattern(endopoint)
-            return pattern.match(event.req.url as string)
-        })
+            '/api/auth/citizen': ['Admin'],
+            '/api/auth/citizen/:id': ['Admin'],
+            '/api/auth/citizen/search?q=:q': ['Admin'],
+            '/api/auth/citizen?page=:page&pagesize=:pagesize': ['Admin'],
 
-        if (!isHandledByThisMiddleware) {
-            return
+            '/api/auth/kk': ['Admin'],
+            '/api/auth/kk/:id': ['Admin'],
+            '/api/auth/kk/search?q=:q': ['Admin'],
+            '/api/auth/kk?page=:page&pagesize=:pagesize': ['Admin'],
+
+            '/api/auth/cashflow': ['Admin'],
+            '/api/auth/cashflow/:id': ['Admin'],
+            '/api/auth/cashflow/search?q=:q': ['Admin'],
+            '/api/auth/cashflow?page=:page&pagesize=:pagesize': ['Admin'],
+
+            '/api/auth/notifications': ['User', 'Admin'],
+            '/api/auth/notifications/:id': ['User', 'Admin'],
+            '/api/auth/notifications/search?q=:q': ['User', 'Admin'],
+            '/api/auth/notifications?page=:page&pagesize=:pagesize': ['User', 'Admin'],
+
+            '/api/auth/logs': ['User', 'Admin'],
+            '/api/auth/logs?page=:page&pagesize=:pagesize': ['User', 'Admin'],
+        };
+
+        // Cek apakah URL ini ditangani oleh middleware ini
+        const matchedEndpoint = Object.keys(endpointRoles).find(endpoint => {
+            const pattern = new UrlPattern(endpoint);
+            return pattern.match(event.node.req.url as string);
+        });
+
+        if (!matchedEndpoint) {
+            return; // Tidak ditangani oleh middleware ini
         }
 
-        const token = event.req.headers['authorization']?.split(' ')[1]
+        // Ambil token dari header
+        const authHeader = getHeader(event, 'authorization');
+        const token = authHeader?.split(' ')[1];
 
-        const decoded = decodeAccessToken(token as string)
+        if (!token) {
+            return sendError(event, createError({
+                statusCode: 401,
+                statusMessage: 'Token tidak ditemukan'
+            }));
+        }
 
+        // Decode token
+        const decoded = decodeAccessToken(token);
         if (!decoded) {
             return sendError(event, createError({
                 statusCode: 401,
-                statusMessage: 'Unauthorized'
-            }))
+                statusMessage: 'Token tidak valid'
+            }));
         }
-
 
         try {
-            const userId = decoded.id
+            // Ambil data user
+            const userId = decoded.id;
+            const user = await User.getUserById(userId);
+            
+            if (!user) {
+                return sendError(event, createError({
+                    statusCode: 401,
+                    statusMessage: 'User tidak ditemukan'
+                }));
+            }
 
-            const user = await User.getUserById(userId)
-            event.context.auth = {user: user}
+            // Cek role authorization
+            const allowedRoles = endpointRoles[matchedEndpoint as keyof typeof endpointRoles];
+            if (!allowedRoles.includes(user.role)) {
+                return sendError(event, createError({
+                    statusCode: 403,
+                    statusMessage: 'Akses ditolak - Anda tidak memiliki izin untuk mengakses resource ini'
+                }));
+            }
+
+            // Set context untuk handler selanjutnya
+            event.context.auth = { user: user };
+            
         } catch (error) {
-            return
+            return sendError(event, createError({
+                statusCode: 500,
+                statusMessage: 'Error saat memvalidasi user'
+            }));
         }
-    } catch (e) {
-        return
-    }})
+        
+    } catch (error) {
+        return sendError(event, createError({
+            statusCode: 500,
+            statusMessage: 'Server error'
+        }));
+    }
+});

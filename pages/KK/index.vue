@@ -128,22 +128,78 @@ const handleSearchData = async (query: string) => {
   }
 }
 
+// Function untuk mendapatkan info device dan browser
+const getDeviceAndBrowserInfo = () => {
+  try {
+    const userAgent = navigator.userAgent;
+    
+    // Detect device type
+    let deviceType = 'Desktop';
+    if (/Mobi|Android/i.test(userAgent)) {
+      deviceType = 'Mobile';
+    } else if (/Tablet|iPad/i.test(userAgent)) {
+      deviceType = 'Tablet';
+    }
+    
+    // Detect OS
+    let os = 'Unknown';
+    if (userAgent.includes('Windows')) os = 'Windows';
+    else if (userAgent.includes('Mac')) os = 'macOS';
+    else if (userAgent.includes('Linux')) os = 'Linux';
+    else if (userAgent.includes('Android')) os = 'Android';
+    else if (userAgent.includes('iOS')) os = 'iOS';
+    
+    // Detect browser
+    let browser = 'Unknown';
+    if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) browser = 'Chrome';
+    else if (userAgent.includes('Firefox')) browser = 'Firefox';
+    else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
+    else if (userAgent.includes('Edg')) browser = 'Edge';
+    else if (userAgent.includes('Opera')) browser = 'Opera';
+    
+    return { deviceType, os, browser };
+  } catch (error) {
+    // Fallback jika gagal detect
+    return { 
+      deviceType: 'Unknown', 
+      os: 'Unknown', 
+      browser: 'Unknown' 
+    };
+  }
+}
+
+// Fixed handleDeleteData
 const handleDeleteData = async (id: number) => {
   try {
-    if (!confirm("Anda yakin ingin menghapus ini?")) return
-    const {deviceType, os, browser} = getDeviceAndBrowserInfo()
-    await useFetchApi(`/api/auth/kk/${id}`, {
-      method: 'DELETE',
-      body: {
-        ip_address: useState('ip_address').value,
-        device: `${deviceType}, ${os} on ${browser}`,
-        location: "Unknown"
-      }
-    })
-    KKData.value = KKData.value.filter((item: KKType) => item.id !== id)
-    $toast('Berhasil mengubah data.', 'success');
-  } catch (e) {
-    $toast('Gagal mengubah data.', 'error');
+    if (!confirm("Anda yakin ingin menghapus data KK ini?")) return;
+    
+    console.log('Attempting to delete KK with ID:', id); // Debug log
+    
+    // Call API DELETE tanpa body (karena API handler tidak memerlukan body)
+    const response = await useFetchApi(`/api/auth/kk/${id}`, {
+      method: 'DELETE'
+    });
+    
+    console.log('Delete response:', response); // Debug log
+    
+    // Update data lokal hanya jika API berhasil
+    KKData.value = KKData.value.filter((item: KKType) => item.id !== id);
+    
+    $toast('Data KK berhasil dihapus!', 'success');
+    
+  } catch (e: any) {
+    console.error('Delete KK Error:', e); // Debug log
+    
+    // Handle specific error messages
+    let errorMessage = 'Gagal menghapus data KK.';
+    
+    if (e?.data?.message) {
+      errorMessage = e.data.message;
+    } else if (e?.message) {
+      errorMessage = e.message;
+    }
+    
+    $toast(errorMessage, 'error');
   }
 }
 

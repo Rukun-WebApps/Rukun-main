@@ -23,9 +23,20 @@ export default defineEventHandler(async (event) => {
             });
         }
 
-        // Logika untuk pengguna dengan peran 'Admin'
-        const application_letters = await ApplicationLetter.getAllApplicationLetters(page, pagesize);
-        const totalApplicationLetters = await ApplicationLetter.countAllApplicationLetters();
+        let application_letters;
+        let totalApplicationLetters;
+
+        // Role-based access control
+        if (user.role === 'Admin') {
+            // Admin can see all application letters
+            application_letters = await ApplicationLetter.getAllApplicationLetters(page, pagesize);
+            totalApplicationLetters = await ApplicationLetter.countAllApplicationLetters();
+        } else {
+            // Regular users can only see their own application letters
+            application_letters = await ApplicationLetter.getApplicationLettersByUserId(user.id, page, pagesize);
+            totalApplicationLetters = await ApplicationLetter.countApplicationLettersByUserId(user.id);
+        }
+
         const totalPages = Math.ceil(totalApplicationLetters / pagesize);
         const baseUrl = "/api/auth/application-letter";
         const prevPage = page > 1 ? `${baseUrl}?page=${page - 1}&pagesize=${pagesize}` : null;

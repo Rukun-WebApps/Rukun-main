@@ -75,6 +75,7 @@ export class ApplicationLetter {
             take,
             select: {
                 id: true,
+                toEmail: true,
                 category_letter: true,
                 data_nik: true,
                 create_at: true,
@@ -115,6 +116,163 @@ export class ApplicationLetter {
         });
     };
 
+    // Updated method for user-specific queries with proper formatting
+    static getApplicationLettersByUserId = async (userId: number, page: number, pageSize: number) => {
+        const skip = (page - 1) * pageSize;
+        const take = pageSize;
+
+        const applicationLetters = await prisma.applicationLetter.findMany({
+            where: {create_by: userId},
+            orderBy: {
+                create_at: 'desc'
+            },
+            skip,
+            take,
+            select: {
+                id: true,
+                toEmail: true,
+                category_letter: true,
+                data_nik: true,
+                create_at: true,
+                user: true,
+            },
+        });
+
+        // Format tanggal (date) ke dd/MM/yy - same as getAllApplicationLetters
+        const formattedAppLetters = applicationLetters.map((applicationLetter) => ({
+            ...applicationLetter,
+            create_at: format(new Date(applicationLetter.create_at), 'dd/MM/yy'),
+            category_letter: mapCategory_letter(applicationLetter.category_letter)
+        }));
+
+        return formattedAppLetters;
+    };
+
+    static countApplicationLettersByUserId = async (userId: number) => {
+        return prisma.applicationLetter.count({
+            where: {create_by: userId}
+        });
+    };
+
+    // Search methods
+    static searchApplicationLetters = async (searchQuery: string) => {
+        const applicationLetters = await prisma.applicationLetter.findMany({
+            where: {
+                OR: [
+                    {
+                        user: {
+                            username: {
+                                contains: searchQuery,
+                                mode: 'insensitive'
+                            }
+                        }
+                    },
+                    {
+                        user: {
+                            email: {
+                                contains: searchQuery,
+                                mode: 'insensitive'
+                            }
+                        }
+                    },
+                    {
+                        category_letter: {
+                            contains: searchQuery,
+                            mode: 'insensitive'
+                        }
+                    },
+                    {
+                        data_nik: {
+                            contains: searchQuery,
+                            mode: 'insensitive'
+                        }
+                    },
+                    {
+                        toEmail: {
+                            contains: searchQuery,
+                            mode: 'insensitive'
+                        }
+                    }
+                ]
+            },
+            select: {
+                id: true,
+                toEmail: true,
+                category_letter: true,
+                data_nik: true,
+                create_at: true,
+                user: true,
+            },
+            orderBy: {
+                create_at: 'desc'
+            }
+        });
+
+        // Format results same as other methods
+        const formattedAppLetters = applicationLetters.map((applicationLetter) => ({
+            ...applicationLetter,
+            create_at: format(new Date(applicationLetter.create_at), 'dd/MM/yy'),
+            category_letter: mapCategory_letter(applicationLetter.category_letter)
+        }));
+
+        return formattedAppLetters;
+    };
+
+    static searchApplicationLettersByUserId = async (userId: number, searchQuery: string) => {
+        const applicationLetters = await prisma.applicationLetter.findMany({
+            where: {
+                AND: [
+                    {
+                        create_by: userId
+                    },
+                    {
+                        OR: [
+                            {
+                                category_letter: {
+                                    contains: searchQuery,
+                                    mode: 'insensitive'
+                                }
+                            },
+                            {
+                                data_nik: {
+                                    contains: searchQuery,
+                                    mode: 'insensitive'
+                                }
+                            },
+                            {
+                                toEmail: {
+                                    contains: searchQuery,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            select: {
+                id: true,
+                toEmail: true,
+                category_letter: true,
+                data_nik: true,
+                create_at: true,
+                user: true,
+            },
+            orderBy: {
+                create_at: 'desc'
+            }
+        });
+
+        // Format results same as other methods
+        const formattedAppLetters = applicationLetters.map((applicationLetter) => ({
+            ...applicationLetter,
+            create_at: format(new Date(applicationLetter.create_at), 'dd/MM/yy'),
+            category_letter: mapCategory_letter(applicationLetter.category_letter)
+        }));
+
+        return formattedAppLetters;
+    };
+
+    // Keep the old methods for backward compatibility (if needed elsewhere)
     static getAllByCreated = async (create_by: number, page: number, pageSize: number) => {
         const skip = (page - 1) * pageSize;
         const take = pageSize;
@@ -138,6 +296,5 @@ export class ApplicationLetter {
         return prisma.applicationLetter.count({
             where: {create_by}
         });
-
     }
 }

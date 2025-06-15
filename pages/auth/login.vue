@@ -124,7 +124,10 @@
         email: email.value,
         password: password.value
       });
-  
+
+      // Tambahkan notifikasi sukses
+      $toast('Login berhasil! Selamat datang.', 'success');
+
       // Menyimpan atau menghapus email di localStorage jika "Ingat Saya" diaktifkan
       if (isRemember.value && email.value) {
         localStorage.setItem("email", email.value);
